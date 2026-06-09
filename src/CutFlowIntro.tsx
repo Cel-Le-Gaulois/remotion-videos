@@ -2,6 +2,7 @@ import {
   AbsoluteFill,
   Audio,
   interpolate,
+  interpolateColors,
   spring,
   staticFile,
   useCurrentFrame,
@@ -145,14 +146,11 @@ const DiagonalSlashes: React.FC<{ progress: number }> = ({ progress }) => {
 
 // ── Shimmer helpers ────────────────────────────────────────────────────────
 
-const SHIMMER_START = 4;    // début shimmer frame 4 — sync ondes du son
-const SHIMMER_END   = 35;   // fin shimmer frame 35 — pas de répétition après
-const SHIMMER_PERIOD = 60;  // conservé pour la formule % mais bloqué par SHIMMER_END
-const LETTER_OFFSET = 4;    // décalage entre chaque lettre (frames)
-const LETTER_DURATION = 10; // durée d'un scintillement par lettre (frames)
-const SHIMMER_PEAK = "#FFE0A0";
+const SHIMMER_START    = 4;   // frame de départ — sync son
+const LETTER_OFFSET    = 4;   // décalage entre chaque lettre (frames)
+const LETTER_DURATION  = 10;  // durée montée + descente par lettre (frames)
+const SHIMMER_PEAK     = "#FFE0A0";
 
-// Lettre, couleur de base, groupe d'animation d'entrée (0=Cut, 1=Flow)
 const CUTFLOW_LETTERS = [
   { char: "C", base: "#FFFFFF", group: 0 },
   { char: "u", base: "#FFFFFF", group: 0 },
@@ -163,41 +161,16 @@ const CUTFLOW_LETTERS = [
   { char: "w", base: "#F5A623", group: 1 },
 ] as const;
 
-const hexToRgb = (hex: string): [number, number, number] => [
-  parseInt(hex.slice(1, 3), 16),
-  parseInt(hex.slice(3, 5), 16),
-  parseInt(hex.slice(5, 7), 16),
-];
-
-const lerpColor = (from: string, to: string, t: number): string => {
-  const [r1, g1, b1] = hexToRgb(from);
-  const [r2, g2, b2] = hexToRgb(to);
-  return `rgb(${Math.round(r1 + (r2 - r1) * t)},${Math.round(g1 + (g2 - g1) * t)},${Math.round(b1 + (b2 - b1) * t)})`;
-};
-
-// Retourne la couleur courante d'une lettre selon sa position dans le cycle
+// Couleur d'une lettre : monte vers SHIMMER_PEAK puis redescend, courbe en cloche via deux interpolateColors
 const letterColor = (frame: number, index: number, base: string): string => {
-  if (frame < SHIMMER_START || frame >= SHIMMER_END) return base;
-  const cycleFrame = (frame - SHIMMER_START) % SHIMMER_PERIOD;
-  const local = cycleFrame - index * LETTER_OFFSET;
-  if (local < 0 || local >= LETTER_DURATION) return base;
-  // Courbe en cloche : monte puis redescend symétriquement
-  const t = Math.sin((local / LETTER_DURATION) * Math.PI);
-  return lerpColor(base, SHIMMER_PEAK, t);
-};
-
-// textShadow d'un glow doux qui suit le shimmer
-const letterGlow = (frame: number, index: number, base: string): string => {
-  if (frame < SHIMMER_START || frame >= SHIMMER_END)
-    return base === "#FFFFFF" ? `0 0 60px ${ACCENT}66` : `0 0 80px ${ACCENT}99`;
-  const cycleFrame = (frame - SHIMMER_START) % SHIMMER_PERIOD;
-  const local = cycleFrame - index * LETTER_OFFSET;
-  const t = (local >= 0 && local < LETTER_DURATION)
-    ? Math.sin((local / LETTER_DURATION) * Math.PI)
-    : 0;
-  const glowColor = lerpColor(ACCENT, SHIMMER_PEAK, t);
-  const spread = base === "#FFFFFF" ? 60 + t * 20 : 80 + t * 20;
-  return `0 0 ${spread}px ${glowColor}${base === "#FFFFFF" ? "99" : "cc"}`;
+  const start = SHIMMER_START + index * LETTER_OFFSET;
+  const mid   = start + LETTER_DURATION / 2;
+  const end   = start + LETTER_DURATION;
+  if (frame < start || frame > end) return base;
+  if (frame <= mid) {
+    return interpolateColors(frame, [start, mid], [base, SHIMMER_PEAK]);
+  }
+  return interpolateColors(frame, [mid, end], [SHIMMER_PEAK, base]);
 };
 
 export const CutFlowIntro: React.FC = () => {
@@ -227,10 +200,6 @@ export const CutFlowIntro: React.FC = () => {
   // Diagonal slashes — dès frame 0
   const slashProgress = useSpring(frame, fps, 0, 60);
 
-  // Glow pulse — actif pendant le shimmer (frames 4-34), stable ensuite
-  const glowPulse = frame < SHIMMER_END
-    ? Math.sin((frame / fps) * Math.PI * 2) * 0.08 + 0.92
-    : 1;
 
   return (
     <AbsoluteFill style={{ background: BG, overflow: "hidden" }}>
@@ -256,7 +225,7 @@ export const CutFlowIntro: React.FC = () => {
           height: 700,
           borderRadius: "50%",
           background: `radial-gradient(circle, ${ACCENT}22 0%, transparent 70%)`,
-          opacity: titleOpacity * glowPulse,
+          opacity: titleOpacity,
         }}
       />
 
@@ -302,7 +271,6 @@ export const CutFlowIntro: React.FC = () => {
                   lineHeight: 1,
                   display: "inline-block",
                   color: letterColor(frame, i, l.base),
-                  textShadow: letterGlow(frame, i, l.base),
                 }}
               >
                 {l.char}
@@ -330,7 +298,6 @@ export const CutFlowIntro: React.FC = () => {
                   lineHeight: 1,
                   display: "inline-block",
                   color: letterColor(frame, i + 3, l.base),
-                  textShadow: letterGlow(frame, i + 3, l.base),
                 }}
               >
                 {l.char}
