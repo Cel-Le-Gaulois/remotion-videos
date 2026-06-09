@@ -32,7 +32,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="CutFlowIntro"
         component={CutFlowIntro}
-        durationInFrames={180}
+        durationInFrames={150}
         fps={30}
         width={1080}
         height={1920}

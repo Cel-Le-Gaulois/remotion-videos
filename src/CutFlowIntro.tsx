@@ -1,7 +1,9 @@
 import {
   AbsoluteFill,
+  Audio,
   interpolate,
   spring,
+  staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
@@ -16,7 +18,7 @@ const useSpring = (frame: number, fps: number, delay: number, stiffness = 100) =
 const ScanLine: React.FC<{ frame: number; fps: number }> = ({ frame, fps }) => {
   const progress = spring({ frame: frame - 5, fps, config: { stiffness: 40, damping: 20 } });
   const y = interpolate(progress, [0, 1], [-10, 110]);
-  const opacity = interpolate(frame, [5, 15, 140, 160], [0, 0.6, 0.6, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const opacity = interpolate(frame, [0, 6, 28, 36], [0, 0.6, 0.6, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
     <div
       style={{
@@ -143,8 +145,9 @@ const DiagonalSlashes: React.FC<{ progress: number }> = ({ progress }) => {
 
 // ── Shimmer helpers ────────────────────────────────────────────────────────
 
-const SHIMMER_START = 90;   // première frame du shimmer
-const SHIMMER_PERIOD = 60;  // répétition toutes les 2 s (30 fps)
+const SHIMMER_START = 4;    // début shimmer frame 4 — sync ondes du son
+const SHIMMER_END   = 35;   // fin shimmer frame 35 — pas de répétition après
+const SHIMMER_PERIOD = 60;  // conservé pour la formule % mais bloqué par SHIMMER_END
 const LETTER_OFFSET = 4;    // décalage entre chaque lettre (frames)
 const LETTER_DURATION = 10; // durée d'un scintillement par lettre (frames)
 const SHIMMER_PEAK = "#FFE0A0";
@@ -174,7 +177,7 @@ const lerpColor = (from: string, to: string, t: number): string => {
 
 // Retourne la couleur courante d'une lettre selon sa position dans le cycle
 const letterColor = (frame: number, index: number, base: string): string => {
-  if (frame < SHIMMER_START) return base;
+  if (frame < SHIMMER_START || frame >= SHIMMER_END) return base;
   const cycleFrame = (frame - SHIMMER_START) % SHIMMER_PERIOD;
   const local = cycleFrame - index * LETTER_OFFSET;
   if (local < 0 || local >= LETTER_DURATION) return base;
@@ -185,7 +188,8 @@ const letterColor = (frame: number, index: number, base: string): string => {
 
 // textShadow d'un glow doux qui suit le shimmer
 const letterGlow = (frame: number, index: number, base: string): string => {
-  if (frame < SHIMMER_START) return base === "#FFFFFF" ? `0 0 60px ${ACCENT}66` : `0 0 80px ${ACCENT}99`;
+  if (frame < SHIMMER_START || frame >= SHIMMER_END)
+    return base === "#FFFFFF" ? `0 0 60px ${ACCENT}66` : `0 0 80px ${ACCENT}99`;
   const cycleFrame = (frame - SHIMMER_START) % SHIMMER_PERIOD;
   const local = cycleFrame - index * LETTER_OFFSET;
   const t = (local >= 0 && local < LETTER_DURATION)
@@ -200,38 +204,38 @@ export const CutFlowIntro: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Title "CutFlow" — word reveal: "Cut" slides in from left, "Flow" from right
-  const cutSlide = useSpring(frame, fps, 8, 120);
-  const flowSlide = useSpring(frame, fps, 18, 120);
+  // Title "CutFlow" — glissement rapide frames 0→4 (sync woosh ~0.15s)
+  const cutX = interpolate(frame, [0, 4], [-160, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const flowX = interpolate(frame, [0, 4], [160, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const titleOpacity = interpolate(frame, [0, 4], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
-  const cutX = interpolate(cutSlide, [0, 1], [-160, 0]);
-  const flowX = interpolate(flowSlide, [0, 1], [160, 0]);
-
-  const titleOpacity = interpolate(frame, [8, 22], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-
-  // Subtitle "Video Editing"
-  const subProgress = useSpring(frame, fps, 38, 80);
+  // Subtitle "Video Editing" — apparaît juste après les lettres, stable avant frame 34
+  const subProgress = useSpring(frame, fps, 6, 120);
   const subY = interpolate(subProgress, [0, 1], [40, 0]);
-  const subOpacity = interpolate(frame, [38, 52], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const subOpacity = interpolate(frame, [6, 16], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
-  // Accent line under title
-  const lineProgress = useSpring(frame, fps, 30, 90);
+  // Accent line under title — se dessine dès frame 4
+  const lineProgress = useSpring(frame, fps, 4, 200);
   const lineWidth = interpolate(lineProgress, [0, 1], [0, 260]);
 
-  // Brackets appear with title
-  const bracketProgress = useSpring(frame, fps, 25, 60);
+  // Brackets — apparaissent avec les lettres
+  const bracketProgress = useSpring(frame, fps, 4, 150);
 
-  // Grid fades in early
-  const gridOpacity = interpolate(frame, [0, 20], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  // Grid — présente immédiatement
+  const gridOpacity = interpolate(frame, [0, 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
-  // Diagonal slashes
-  const slashProgress = useSpring(frame, fps, 2, 30);
+  // Diagonal slashes — dès frame 0
+  const slashProgress = useSpring(frame, fps, 0, 60);
 
-  // Global vignette/glow pulse
-  const glowPulse = Math.sin((frame / fps) * Math.PI * 2) * 0.08 + 0.92;
+  // Glow pulse — actif pendant le shimmer (frames 4-34), stable ensuite
+  const glowPulse = frame < SHIMMER_END
+    ? Math.sin((frame / fps) * Math.PI * 2) * 0.08 + 0.92
+    : 1;
 
   return (
     <AbsoluteFill style={{ background: BG, overflow: "hidden" }}>
+      <Audio src={staticFile("sounds/ValekStudio_cinematic_06.wav")} volume={0.5} />
+
       {/* Grid */}
       <GridLines opacity={gridOpacity} />
 
@@ -384,7 +388,7 @@ export const CutFlowIntro: React.FC = () => {
           right: 0,
           display: "flex",
           justifyContent: "center",
-          opacity: interpolate(frame, [50, 65], [0, 0.5], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+          opacity: interpolate(frame, [18, 28], [0, 0.5], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
         }}
       >
         <span
