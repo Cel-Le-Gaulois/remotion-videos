@@ -2,6 +2,7 @@ import { Composition } from "remotion";
 import { HelloWorld, myCompSchema } from "./HelloWorld";
 import { Logo, myCompSchema2 } from "./HelloWorld/Logo";
 import { CutFlowIntro } from "./CutFlowIntro";
+import { ThunderIntro } from "./ThunderIntro";
 
 // Each <Composition> is an entry in the sidebar!
 
@@ -33,6 +34,15 @@ export const RemotionRoot: React.FC = () => {
         id="CutFlowIntro"
         component={CutFlowIntro}
         durationInFrames={150}
+        fps={30}
+        width={1080}
+        height={1920}
+      />
+
+      <Composition
+        id="ThunderIntro"
+        component={ThunderIntro}
+        durationInFrames={300}
         fps={30}
         width={1080}
         height={1920}
