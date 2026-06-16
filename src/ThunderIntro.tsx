@@ -94,6 +94,81 @@ const DriftStreaks: React.FC<{ frame: number; visibility: number }> = ({ frame, 
   </AbsoluteFill>
 );
 
+// Particules projetées depuis le centre au moment du boum.
+// Tout est dérivé d'un hash déterministe -> rendu MP4 identique à chaque fois.
+type Burst = {
+  angle: number;   // direction d'éjection (radians)
+  dist: number;    // distance max atteinte (px)
+  tau: number;     // constante de décélération (frames)
+  size: number;    // taille (px)
+  op: number;      // opacité de base
+  fall: number;    // gravité / retombée
+  driftAmp: number;
+  driftSpeed: number;
+  phase: number;
+};
+
+const BURSTS: Burst[] = Array.from({ length: 30 }, (_, i) => {
+  // Angle réparti tout autour, légèrement perturbé pour éviter la régularité
+  const angle = (i / 30) * Math.PI * 2 + (hash(i, 21) - 0.5) * 0.5;
+  return {
+    angle,
+    dist: 360 + hash(i, 22) * 560,
+    tau: 9 + hash(i, 23) * 8,
+    size: 2 + hash(i, 24) * 4,
+    op: 0.3 + hash(i, 25) * 0.45,
+    fall: 14 + hash(i, 26) * 26,
+    driftAmp: 10 + hash(i, 27) * 22,
+    driftSpeed: 0.25 + hash(i, 28) * 0.5,
+    phase: hash(i, 29) * Math.PI * 2,
+  };
+});
+
+const BurstParticles: React.FC<{ frame: number; fps: number }> = ({ frame, fps }) => {
+  if (frame < BOOM) return null;
+  const t = frame - BOOM;          // frames depuis le boum
+  const ts = t / fps;              // secondes depuis le boum
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      {BURSTS.map((p, i) => {
+        // Éjection qui décélère : approche dist en ralentissant (ease-out exponentiel)
+        const d = p.dist * (1 - Math.exp(-t / p.tau));
+        // Retombée douce + dérive organique
+        const dx = Math.cos(p.angle) * d + Math.sin(ts * p.driftSpeed + p.phase) * p.driftAmp;
+        const dy =
+          Math.sin(p.angle) * d +
+          p.fall * ts +                       // gravité lente
+          Math.cos(ts * p.driftSpeed + p.phase) * p.driftAmp * 0.6;
+        // Fondu d'entrée au boum, léger estompage vers la fin
+        const opacity =
+          p.op *
+          interpolate(frame, [BOOM, BOOM + 4], [0, 1], clamp) *
+          interpolate(frame, [BOOM, 240, 300], [1, 1, 0.65], clamp);
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              width: p.size,
+              height: p.size,
+              marginLeft: -p.size / 2,
+              marginTop: -p.size / 2,
+              borderRadius: "50%",
+              background: ACCENT,
+              opacity,
+              transform: `translate(${dx}px, ${dy}px)`,
+              boxShadow: `0 0 ${p.size * 1.5}px ${ACCENT}`,
+              filter: "blur(0.4px)",
+            }}
+          />
+        );
+      })}
+    </AbsoluteFill>
+  );
+};
+
 // Onde de choc : deux anneaux qui se propagent du centre vers les bords
 const Shockwave: React.FC<{ frame: number }> = ({ frame }) => (
   <AbsoluteFill style={{ pointerEvents: "none" }}>
@@ -123,6 +198,68 @@ const Shockwave: React.FC<{ frame: number }> = ({ frame }) => (
     })}
   </AbsoluteFill>
 );
+
+// Crochets de coin discrets aux quatre coins (apparaissent au boum)
+const CornerBrackets: React.FC<{ opacity: number }> = ({ opacity }) => {
+  const size = 56;
+  const thick = 4;
+  const margin = 90;
+
+  // [flipX, flipY] pour chacun des quatre coins
+  const corners: [number, number][] = [
+    [0, 0],
+    [1, 0],
+    [0, 1],
+    [1, 1],
+  ];
+
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      {corners.map(([flipX, flipY], i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            left: flipX ? undefined : margin,
+            right: flipX ? margin : undefined,
+            top: flipY ? undefined : margin,
+            bottom: flipY ? margin : undefined,
+            width: size,
+            height: size,
+            opacity,
+          }}
+        >
+          {/* bras horizontal */}
+          <div
+            style={{
+              position: "absolute",
+              top: flipY ? undefined : 0,
+              bottom: flipY ? 0 : undefined,
+              left: flipX ? undefined : 0,
+              right: flipX ? 0 : undefined,
+              width: size,
+              height: thick,
+              background: ACCENT,
+            }}
+          />
+          {/* bras vertical */}
+          <div
+            style={{
+              position: "absolute",
+              top: flipY ? undefined : 0,
+              bottom: flipY ? 0 : undefined,
+              left: flipX ? undefined : 0,
+              right: flipX ? 0 : undefined,
+              width: thick,
+              height: size,
+              background: ACCENT,
+            }}
+          />
+        </div>
+      ))}
+    </AbsoluteFill>
+  );
+};
 
 // ── Composition ──────────────────────────────────────────────────────────────
 
@@ -167,6 +304,9 @@ export const ThunderIntro: React.FC = () => {
   // Particules : plus présentes au moment du boum, puis s'estompent doucement
   const particleVis = interpolate(frame, [0, BOOM, 110], [0.5, 1, 0.45], clamp);
 
+  // Crochets de coin : fondu d'entrée au boum, puis restent jusqu'à la fin
+  const bracketOpacity = interpolate(frame, [BOOM, BOOM + 8], [0, 0.85], clamp);
+
   return (
     <AbsoluteFill style={{ background: BG, overflow: "hidden" }}>
       <Audio src={staticFile("Sounds/thunder_intro.mp3")} volume={0.7} />
@@ -193,6 +333,12 @@ export const ThunderIntro: React.FC = () => {
 
       {/* Onde de choc */}
       <Shockwave frame={frame} />
+
+      {/* Particules projetées au boum (derrière le titre) */}
+      <BurstParticles frame={frame} fps={fps} />
+
+      {/* Crochets de coin */}
+      <CornerBrackets opacity={bracketOpacity} />
 
       {/* ── Titre ── */}
       <AbsoluteFill
