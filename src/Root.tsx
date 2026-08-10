@@ -4,6 +4,7 @@ import { Logo, myCompSchema2 } from "./HelloWorld/Logo";
 import { CutFlowIntro } from "./CutFlowIntro";
 import { ThunderIntro } from "./ThunderIntro";
 import { ThunderIntroMatrix } from "./ThunderIntroMatrix";
+import { WinkThumbsUp } from "./WinkThumbsUp";
 
 // Each <Composition> is an entry in the sidebar!
 
@@ -56,6 +57,15 @@ export const RemotionRoot: React.FC = () => {
         fps={30}
         width={1080}
         height={1920}
+      />
+
+      <Composition
+        id="WinkThumbsUp"
+        component={WinkThumbsUp}
+        durationInFrames={90}
+        fps={30}
+        width={1024}
+        height={1024}
       />
 
       <Composition
