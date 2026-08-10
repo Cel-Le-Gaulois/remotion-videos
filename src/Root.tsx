@@ -5,6 +5,12 @@ import { CutFlowIntro } from "./CutFlowIntro";
 import { ThunderIntro } from "./ThunderIntro";
 import { ThunderIntroMatrix } from "./ThunderIntroMatrix";
 import { WinkThumbsUp } from "./WinkThumbsUp";
+import {
+  KineticTitle,
+  calculateKineticTitleMetadata,
+  kineticTitleDefaults,
+  kineticTitleSchema,
+} from "./KineticTitle";
 
 // Each <Composition> is an entry in the sidebar!
 
@@ -66,6 +72,37 @@ export const RemotionRoot: React.FC = () => {
         fps={30}
         width={1024}
         height={1024}
+      />
+
+      {/*
+        Titres animés génériques, à exporter en overlay alpha.
+        `durationInFrames` n'est qu'un repli : calculateMetadata recalcule la
+        durée réelle à partir du texte et des réglages (entrée + hold + sortie).
+
+        Pour une version horizontale, duplique ce bloc en changeant juste
+        l'id et le format — le composant s'adapte tout seul :
+          <Composition
+            id="KineticTitleWide"
+            component={KineticTitle}
+            durationInFrames={120}
+            fps={30}
+            width={1920}
+            height={1080}
+            schema={kineticTitleSchema}
+            defaultProps={kineticTitleDefaults}
+            calculateMetadata={calculateKineticTitleMetadata}
+          />
+      */}
+      <Composition
+        id="KineticTitle"
+        component={KineticTitle}
+        durationInFrames={120}
+        fps={30}
+        width={1080}
+        height={1920}
+        schema={kineticTitleSchema}
+        defaultProps={kineticTitleDefaults}
+        calculateMetadata={calculateKineticTitleMetadata}
       />
 
       <Composition
