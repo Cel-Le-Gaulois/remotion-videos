@@ -5,6 +5,7 @@ import { CutFlowIntro } from "./CutFlowIntro";
 import { ThunderIntro } from "./ThunderIntro";
 import { ThunderIntroMatrix } from "./ThunderIntroMatrix";
 import { WinkThumbsUp } from "./WinkThumbsUp";
+import { AvantApres, avantApresDefaults, avantApresSchema, calculateAvantApresMetadata } from "./AvantApres";
 import {
   KineticTitle,
   calculateKineticTitleMetadata,
@@ -63,6 +64,18 @@ export const RemotionRoot: React.FC = () => {
         fps={30}
         width={1080}
         height={1920}
+      />
+
+      <Composition
+        id="AvantApres"
+        component={AvantApres}
+        durationInFrames={360}
+        fps={30}
+        width={1080}
+        height={1920}
+        schema={avantApresSchema}
+        defaultProps={avantApresDefaults}
+        calculateMetadata={calculateAvantApresMetadata}
       />
 
       <Composition

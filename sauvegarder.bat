@@ -1,6 +1,6 @@
 @echo off
 title Sauvegarde Git - Remotion
-cd /d "D:\remotion"
+cd /d "D:\Projets\Remotion"
 
 echo ============================================
 echo   Sauvegarde du projet Remotion sur GitHub

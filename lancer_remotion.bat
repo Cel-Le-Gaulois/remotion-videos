@@ -1,6 +1,6 @@
 @echo off
 title Remotion Studio
-cd /d "D:\remotion"
+cd /d "D:\Projets\Remotion"
 echo ============================================
 echo   Demarrage de Remotion Studio...
 echo   (Ne fermez pas cette fenetre tant que

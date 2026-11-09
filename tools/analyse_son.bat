@@ -10,7 +10,7 @@ REM   Une pause finale laisse le temps de lire les resultats.
 REM ===========================================================================
 
 REM Chemin absolu vers le script Python.
-set "SCRIPT=D:\remotion\tools\analyse_audio.py"
+set "SCRIPT=D:\Projets\Remotion\tools\analyse_audio.py"
 
 REM Aucun fichier depose (double-clic) : on explique et on quitte.
 if "%~1"=="" (
